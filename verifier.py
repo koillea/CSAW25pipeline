@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""Verify challenge-2 easy UART behavior using the pinned Docker image."""
+
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import re
+import shutil
+
+PROJECT = Path(__file__).resolve().parent
+CHALLENGE = PROJECT / "work" / "2025"
+EASY = CHALLENGE / "challenges" / "challenge_2" / "01_easy"
+RTL_DIR = EASY / "rtl"
+
+# Container paths: adjust these together if the image layout changes.
+CONTAINER_EASY = "/home/devuser/challenges/challenge_2/01_easy"
+CONTAINER_RTL = f"{CONTAINER_EASY}/rtl"
+IMAGE = "csaw2025"
+
+HARNESS = r'''#include "Vwbuart.h"
+#include "verilated.h"
+#include "verilated_vpi.h"
+#include "verilated_vcd_c.h"
+#include <cstdio>
+vluint64_t main_time = 0; VerilatedVcdC* g_tfp = nullptr;
+static int dos_active_value() {
+ vpiHandle h=vpi_handle_by_name((PLI_BYTE8*)"TOP.dos_active",nullptr);
+ if(!h) h=vpi_handle_by_name((PLI_BYTE8*)"TOP.wbuart.dos_active",nullptr);
+ if(!h) return -1;
+ s_vpi_value v{}; v.format=vpiIntVal; vpi_get_value(h,&v); return v.value.integer;
+}
+static void tick(Vwbuart *d, int rx) { d->i_clk=0; d->i_uart_rx=rx; d->eval(); if(g_tfp) g_tfp->dump(main_time++); d->i_clk=1; d->eval(); if(g_tfp) g_tfp->dump(main_time++); }
+static void send_byte(Vwbuart *d, unsigned char b) {
+ int x[10]={0,int(b&1),int((b>>1)&1),int((b>>2)&1),int((b>>3)&1),int((b>>4)&1),int((b>>5)&1),int((b>>6)&1),int((b>>7)&1),1};
+ for (int bit:x) for (int n=0;n<25;++n) tick(d,bit);
+}
+int main(int argc,char **argv) { Verilated::commandArgs(argc,argv); Vwbuart d; Verilated::traceEverOn(true); g_tfp = new VerilatedVcdC; d.trace(g_tfp,99); g_tfp->open("<CONTAINER_RTL>/exploit.vcd");
+ d.i_wb_cyc=0;d.i_wb_stb=0;d.i_wb_we=0;d.i_wb_addr=0;d.i_wb_data=0;d.i_wb_sel=0xf;d.i_uart_rx=1;d.i_cts_n=0;d.i_reset=1;
+ for(int n=0;n<8;++n)tick(&d,1); d.i_reset=0;d.i_wb_cyc=1;d.i_wb_stb=1; for(int n=0;n<512;++n)tick(&d,1);
+ int before=0;for(int n=0;n<100;++n){tick(&d,1);before+=d.o_wb_ack!=0;} int dos_before=dos_active_value();
+ for(unsigned char b:{0x10,0xa4,0x98,0xbd})send_byte(&d,b);
+ int dos_after=dos_active_value(); int after=0;for(int n=0;n<100;++n){tick(&d,1);after+=d.o_wb_ack!=0;}
+ std::printf("before=%d after=%d\nDOS_ACTIVE before=%d after=%d\n",before,after,dos_before,dos_after); std::printf("ACK_COUNTS before=%d after=%d\n", before, after); if(g_tfp) g_tfp->close(); return(before>0&&after==0)?0:1; }
+'''
+
+
+def docker_run(command, mounts=()):
+    cmd = ["docker", "run", "--rm"]
+    for host, container in mounts:
+        cmd += ["-v", f"{host}:{container}"]
+    cmd += [IMAGE, "-lc", " ".join(command)]
+    try:
+        p = subprocess.run(cmd, text=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, check=False)
+        return p.returncode == 0, f"$ {' '.join(cmd)}\n{p.stdout}"
+    except OSError as exc:
+        return False, f"$ {' '.join(cmd)}\nDocker unavailable: {exc}\n"
+
+
+def exploit_check():
+    with tempfile.TemporaryDirectory(prefix="uart-verifier-") as td:
+        temp = Path(td)
+        (temp / "probe.cpp").write_text(HARNESS.replace("<CONTAINER_RTL>", CONTAINER_RTL), encoding="utf-8")
+        files = " ".join(f"{CONTAINER_RTL}/{n}" for n in
+                          ("wbuart.v", "rxuart.v", "txuart.v", "ufifo.v", "skidbuffer.v"))
+        command = ["verilator", "--cc", "--exe", "--vpi", "--trace", "--build", "--top-module", "wbuart",
+                   "-Mdir", "/tmp/verifier/obj", "-CFLAGS", "-std=c++14",
+                   "/tmp/verifier/probe.cpp", files, "&&", "/tmp/verifier/obj/Vwbuart"]
+        ok, raw = docker_run(command, ((RTL_DIR, CONTAINER_RTL), (temp, "/tmp/verifier")))
+        try:
+            raw += parse_exploit_vcd(RTL_DIR / "exploit.vcd")
+        finally:
+            (RTL_DIR / "exploit.vcd").unlink(missing_ok=True)
+        return ok, raw
+
+
+def parse_exploit_vcd(path):
+    if not path.exists():
+        return "VCD: exploit.vcd was not produced.\n"
+    ids = {}
+    values = {}
+    rx_ids = set()
+    data_ids = set()
+    dos_ids = set()
+    found = []
+    rx_values = []
+    rising = 0
+    rx_previous = {}
+    rx_data = {}
+    dos_first = None
+    time_value = 0
+    with path.open(encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            line = line.strip()
+            if line.startswith("$var "):
+                fields = line.split()
+                if len(fields) >= 5:
+                    ident, name = fields[3], fields[4]
+                    ids[ident] = name
+                    lower = name.lower()
+                    if any(signal in lower for signal in ("rx_stb", "rx_uart_data", "dos_active", "i_uart_rx")):
+                        found.append(name)
+                    if "rx_stb" in lower: rx_ids.add(ident)
+                    if "rx_uart_data" in lower: data_ids.add(ident)
+                    if "dos_active" in lower: dos_ids.add(ident)
+            elif line.startswith("#"):
+                time_value = int(line[1:] or 0)
+            elif line.startswith("b"):
+                bits, ident = line[1:].split()[:2]
+                values[ident] = int(bits.replace("x", "0").replace("z", "0"), 2)
+                if ident in data_ids: rx_data[ident] = values[ident]
+            elif line and line[0] in "01xzXZ":
+                value, ident = line[0].lower(), line[1:]
+                values[ident] = value
+                if ident in rx_ids:
+                    old = rx_previous.get(ident, "0")
+                    if old == "0" and value == "1":
+                        rising += 1
+                        data = next((rx_data[i] for i in data_ids if i in rx_data), None)
+                        rx_values.append((time_value, data))
+                    rx_previous[ident] = value
+                if ident in dos_ids and value == "1" and dos_first is None:
+                    dos_first = time_value
+    lines = [f"VCD signals: {sorted(set(found))}", f"VCD rx_stb rising edges: {rising}"]
+    lines.append("VCD rx_uart_data at rx_stb: " + ", ".join(
+        f"0x{value:x}" if value is not None else "unknown" for _, value in rx_values))
+    lines.append(f"VCD first dos_active=1: {dos_first if dos_first is not None else 'never'}")
+    return "\n".join(lines) + "\n"
+
+
+def exploit_feedback(raw):
+    match = re.search(r"before=(\d+) after=(\d+)", raw)
+    if not match:
+        return raw
+    before, after = map(int, match.groups())
+    if after >= max(0, before - 1):
+        meaning = (
+            "The bus kept acknowledging after the knock — your Trojan did NOT "
+            "detect the sequence or did not gate o_wb_ack. The knock arrives as "
+            "bytes received over the UART RX line (decoded by the rxuart "
+            "submodule); watch the received-byte strobe/value and halt o_wb_ack "
+            "until 0xfe is received 4 times."
+        )
+    elif after > 0:
+        meaning = (
+            f"Partial halt — the bus still acked {after} times after the knock; "
+            "the DoS must stop ALL acks (after must reach 0)."
+        )
+    else:
+        meaning = "The bus stopped acknowledging after the knock (trigger fired)."
+    return raw.rstrip("\n") + "\n" + meaning + "\n"
+
+
+def clean_stale_artifacts():
+    """Remove only generated build artifacts within this challenge tree."""
+    for path in CHALLENGE.rglob("obj_dir"):
+        if path.is_dir():
+            shutil.rmtree(path)
+    for path in CHALLENGE.rglob("*.d"):
+        if path.is_file():
+            path.unlink()
+    for path in CHALLENGE.rglob("sim-logs"):
+        if path.is_dir():
+            shutil.rmtree(path)
+
+
+def verify():
+    if not CHALLENGE.is_dir() or not RTL_DIR.is_dir():
+        return {"normal_ok": False, "trigger_fires": False,
+                "raw": f"Challenge RTL not found: {RTL_DIR}\n"}
+    try:
+        clean_stale_artifacts()
+    except OSError as exc:
+        return {"normal_ok": False, "trigger_fires": False,
+                "raw": f"Failed to remove stale challenge build artifacts: {exc}\n"}
+    ok, raw = docker_run(
+        ["/home/devuser/challenges/challenge_2/scripts/run-simulation.sh",
+         "--clean", "-p", CONTAINER_EASY, "-t", "linetest", "&&",
+         "/home/devuser/challenges/challenge_2/scripts/run-simulation.sh",
+         "-p", CONTAINER_EASY, "-t", "linetest"],
+        ((RTL_DIR, CONTAINER_RTL),))
+    if not ok:
+        lowered = raw.lower()
+        if any(token in lowered for token in
+               ("error:", "undefined", "no rule to make", "compile", "build failed")):
+            raw += "Normal testbench failure classification: compile/build error.\n"
+        else:
+            raw += "Normal testbench failure classification: functional mismatch.\n"
+        return {"normal_ok": False, "trigger_fires": False, "raw": raw}
+    exploit_ok, exploit_raw = exploit_check()
+    return {"normal_ok": True, "trigger_fires": exploit_ok,
+            "raw": raw + exploit_feedback(exploit_raw)}
+
+
+def main():
+    print(verify())
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

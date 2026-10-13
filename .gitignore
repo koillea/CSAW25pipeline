@@ -1,0 +1,26 @@
+# secrets
+.env
+.env.*
+*.key
+*.pem
+*.secret
+
+# cloned challenge repos (not part of the pipeline)
+work/
+
+# python / build junk
+__pycache__/
+*.pyc
+.venv/
+venv/
+obj_dir/
+*.vcd
+
+# logs (optional - remove this line if you want to commit run logs)
+ai/agent_log.jsonl
+
+# cloned challenge repo (actual name)
+CSAW26/
+
+# macOS
+.DS_Store
