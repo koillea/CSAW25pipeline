@@ -24,3 +24,6 @@ CSAW26/
 
 # macOS
 .DS_Store
+
+# logs at any depth
+**/agent_log.jsonl
