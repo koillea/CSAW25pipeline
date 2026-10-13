@@ -17,7 +17,6 @@ obj_dir/
 *.vcd
 
 # logs (optional - remove this line if you want to commit run logs)
-ai/agent_log.jsonl
 
 # cloned challenge repo (actual name)
 CSAW26/
@@ -26,4 +25,3 @@ CSAW26/
 .DS_Store
 
 # logs at any depth
-**/agent_log.jsonl
