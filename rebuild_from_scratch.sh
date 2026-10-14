@@ -21,6 +21,7 @@ echo "=== Build csaw2025 image ==="
 if docker image inspect csaw2025 >/dev/null 2>&1; then echo "Docker image csaw2025 already exists; skipping build"; else docker build -t csaw2025 -f work/2025/docker/Dockerfile work/2025; fi
 
 echo "=== Seed hard-tier pristine baseline ==="
+git -C work/2025 checkout -- challenges/challenge_2/03_hard/rtl/wbuart.v
 mkdir -p challenge_2/hard/clean_rtl
 cp work/2025/challenges/challenge_2/03_hard/rtl/wbuart.v challenge_2/hard/clean_rtl/wbuart.v
 rm -f challenge_2/hard/clean_area.txt
@@ -33,7 +34,7 @@ printf '%s\n' '---------|------------|---------------|----------|--------'
 all_pass=1
 for tier in "${TIERS[@]}"; do
   echo "--- ${tier} ---"
-  log_path="ai/agent_log.jsonl"
+  log_path="challenge_2/${tier}/ai/agent_log.jsonl"
   (cd "challenge_2/${tier}" && python3 agent.py) || echo "WARNING: ${tier} agent failed; parsing its last verdict" >&2
   verdict_json='{"normal_ok":false,"trigger_fires":false,"area_ok":false}'
   if [[ -f "$log_path" ]]; then
