@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import pathlib
 import shutil
 import sys
 import time
@@ -13,9 +14,16 @@ from verifier import verify
 
 PROVIDER = "google"
 MAX_TRIES = 6
-RTL_DIR = os.path.join("work", "2025", "challenges", "challenge_2", "01_easy", "rtl")
-RTL_PATH = os.path.join(RTL_DIR, "wbuart.v")
-FINAL_PATH = os.path.join(RTL_DIR, "trojan_final.v")
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR
+while not (PROJECT_ROOT / "work").is_dir():
+    PARENT = PROJECT_ROOT.parent
+    if PARENT == PROJECT_ROOT:
+        raise RuntimeError("Could not find project root containing work/")
+    PROJECT_ROOT = PARENT
+RTL_DIR = PROJECT_ROOT / "work" / "2025" / "challenges" / "challenge_2" / "01_easy" / "rtl"
+RTL_PATH = RTL_DIR / "wbuart.v"
+FINAL_PATH = SCRIPT_DIR / "solution" / "trojan_final.v"
 
 
 def _fingerprint(candidate, result):
@@ -72,6 +80,7 @@ def main():
 
                 if is_success(result):
                     stage = "final save"
+                    FINAL_PATH.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(RTL_PATH, FINAL_PATH)
                     print(f"SUCCESS on attempt {attempt}")
                     return 0
@@ -99,4 +108,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print(f"PROJECT_ROOT={PROJECT_ROOT}")
+    print(f"isdir(RTL_DIR)={RTL_DIR.is_dir()}")
     sys.exit(main())

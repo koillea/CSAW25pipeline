@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """Verify challenge-2 easy UART behavior using the pinned Docker image."""
 
-from pathlib import Path
+import pathlib
 import subprocess
 import sys
 import tempfile
 import re
 import shutil
 
-PROJECT = Path(__file__).resolve().parent
-CHALLENGE = PROJECT / "work" / "2025"
-EASY = CHALLENGE / "challenges" / "challenge_2" / "01_easy"
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR
+while not (PROJECT_ROOT / "work").is_dir():
+    if PROJECT_ROOT.parent == PROJECT_ROOT:
+        raise RuntimeError("Could not find project root containing work/")
+    PROJECT_ROOT = PROJECT_ROOT.parent
+CHALLENGE = PROJECT_ROOT / "work" / "2025"
+EASY = CHALLENGE / "challenges" / "challenge_2" / "02_medium"
 RTL_DIR = EASY / "rtl"
 
 # Container paths: adjust these together if the image layout changes.
-CONTAINER_EASY = "/home/devuser/challenges/challenge_2/01_easy"
+CONTAINER_EASY = "/home/devuser/challenges/challenge_2/02_medium"
 CONTAINER_RTL = f"{CONTAINER_EASY}/rtl"
 IMAGE = "csaw2025"
 
@@ -23,25 +28,25 @@ HARNESS = r'''#include "Vwbuart.h"
 #include "verilated_vpi.h"
 #include "verilated_vcd_c.h"
 #include <cstdio>
+#include <cstdint>
 vluint64_t main_time = 0; VerilatedVcdC* g_tfp = nullptr;
-static int dos_active_value() {
- vpiHandle h=vpi_handle_by_name((PLI_BYTE8*)"TOP.dos_active",nullptr);
- if(!h) h=vpi_handle_by_name((PLI_BYTE8*)"TOP.wbuart.dos_active",nullptr);
- if(!h) return -1;
- s_vpi_value v{}; v.format=vpiIntVal; vpi_get_value(h,&v); return v.value.integer;
-}
 static void tick(Vwbuart *d, int rx) { d->i_clk=0; d->i_uart_rx=rx; d->eval(); if(g_tfp) g_tfp->dump(main_time++); d->i_clk=1; d->eval(); if(g_tfp) g_tfp->dump(main_time++); }
 static void send_byte(Vwbuart *d, unsigned char b) {
  int x[10]={0,int(b&1),int((b>>1)&1),int((b>>2)&1),int((b>>3)&1),int((b>>4)&1),int((b>>5)&1),int((b>>6)&1),int((b>>7)&1),1};
  for (int bit:x) for (int n=0;n<25;++n) tick(d,bit);
 }
+static uint32_t wb_read(Vwbuart *d, unsigned addr) {
+ d->i_wb_cyc=1; d->i_wb_we=0; d->i_wb_addr=addr; d->i_wb_stb=1; tick(d,1); d->i_wb_stb=0;
+ uint32_t value=0; for(int n=0;n<8;++n){ tick(d,1); if(d->o_wb_ack){ value=d->o_wb_data; break; } }
+ d->i_wb_cyc=0; return value;
+}
 int main(int argc,char **argv) { Verilated::commandArgs(argc,argv); Vwbuart d; Verilated::traceEverOn(true); g_tfp = new VerilatedVcdC; d.trace(g_tfp,99); g_tfp->open("<CONTAINER_RTL>/exploit.vcd");
  d.i_wb_cyc=0;d.i_wb_stb=0;d.i_wb_we=0;d.i_wb_addr=0;d.i_wb_data=0;d.i_wb_sel=0xf;d.i_uart_rx=1;d.i_cts_n=0;d.i_reset=1;
- for(int n=0;n<8;++n)tick(&d,1); d.i_reset=0;d.i_wb_cyc=1;d.i_wb_stb=1; for(int n=0;n<512;++n)tick(&d,1);
- int before=0;for(int n=0;n<100;++n){tick(&d,1);before+=d.o_wb_ack!=0;} int dos_before=dos_active_value();
- for(unsigned char b:{0x10,0xa4,0x98,0xbd})send_byte(&d,b);
- int dos_after=dos_active_value(); int after=0;for(int n=0;n<100;++n){tick(&d,1);after+=d.o_wb_ack!=0;}
- std::printf("before=%d after=%d\nDOS_ACTIVE before=%d after=%d\n",before,after,dos_before,dos_after); std::printf("ACK_COUNTS before=%d after=%d\n", before, after); if(g_tfp) g_tfp->close(); return(before>0&&after==0)?0:1; }
+ for(int n=0;n<8;++n)tick(&d,1); d.i_reset=0; for(int n=0;n<512;++n)tick(&d,1);
+ uint32_t setup_pre=wb_read(&d,0); send_byte(&d,0x1e); for(int n=0;n<64;++n)tick(&d,1);
+ wb_read(&d,0); wb_read(&d,0); wb_read(&d,1); wb_read(&d,1);
+ uint32_t spoof=wb_read(&d,0); uint32_t revert=wb_read(&d,0);
+ std::printf("MEDIUM setup_pre=0x%08x spoof=0x%08x revert=0x%08x\n",setup_pre,spoof,revert); if(g_tfp) g_tfp->close(); return(spoof==0xdeadbeef&&setup_pre!=0xdeadbeef&&revert!=0xdeadbeef)?0:1; }
 '''
 
 
@@ -60,7 +65,7 @@ def docker_run(command, mounts=()):
 
 def exploit_check():
     with tempfile.TemporaryDirectory(prefix="uart-verifier-") as td:
-        temp = Path(td)
+        temp = pathlib.Path(td)
         (temp / "probe.cpp").write_text(HARNESS.replace("<CONTAINER_RTL>", CONTAINER_RTL), encoding="utf-8")
         files = " ".join(f"{CONTAINER_RTL}/{n}" for n in
                           ("wbuart.v", "rxuart.v", "txuart.v", "ufifo.v", "skidbuffer.v"))

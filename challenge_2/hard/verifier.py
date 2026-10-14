@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Verify challenge-2 easy UART behavior using the pinned Docker image."""
 
-from pathlib import Path
+import pathlib
 import subprocess
 import sys
 import tempfile
 import re
 import shutil
 
-PROJECT = Path(__file__).resolve().parent.parent
-CHALLENGE = PROJECT / "work" / "2025"
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR
+while not (PROJECT_ROOT / "work").is_dir():
+    if PROJECT_ROOT.parent == PROJECT_ROOT:
+        raise RuntimeError("Could not find project root containing work/")
+    PROJECT_ROOT = PROJECT_ROOT.parent
+CHALLENGE = PROJECT_ROOT / "work" / "2025"
 EASY = CHALLENGE / "challenges" / "challenge_2" / "03_hard"
 RTL_DIR = EASY / "rtl"
 
@@ -65,7 +70,7 @@ def synth_area(rtl_host_dir):
         "-p", CONTAINER_EASY, "-i", "wbuart,rxuart,txuart,ufifo,skidbuffer", "&&", "cat",
         f"{CONTAINER_EASY}/synth-logs/wbuart_synth.log",
     ]
-    ok, raw = docker_run(command, ((Path(rtl_host_dir), CONTAINER_RTL),))
+    ok, raw = docker_run(command, ((pathlib.Path(rtl_host_dir), CONTAINER_RTL),))
     if not ok:
         return None
     matches = re.findall(r"Chip area for module.*?:\s*([0-9.]+)", raw)
@@ -73,14 +78,14 @@ def synth_area(rtl_host_dir):
 
 
 def clean_wbuart_source():
-    pristine = PROJECT / "hard" / "clean_rtl" / "wbuart.v"
+    pristine = SCRIPT_DIR / "clean_rtl" / "wbuart.v"
     if not pristine.is_file():
         return None
     return pristine.read_text(encoding="utf-8")
 
 
 def baseline_area():
-    cache = PROJECT / "hard" / "clean_area.txt"
+    cache = SCRIPT_DIR / "clean_area.txt"
     try:
         return float(cache.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
@@ -89,7 +94,7 @@ def baseline_area():
     if clean_source is None:
         return None
     with tempfile.TemporaryDirectory(prefix="clean-rtl-") as td:
-        temp_rtl = Path(td)
+        temp_rtl = pathlib.Path(td)
         for name in ("rxuart.v", "txuart.v", "ufifo.v", "skidbuffer.v"):
             shutil.copyfile(RTL_DIR / name, temp_rtl / name)
         (temp_rtl / "wbuart.v").write_text(clean_source, encoding="utf-8")
@@ -101,7 +106,7 @@ def baseline_area():
 
 def exploit_check():
     with tempfile.TemporaryDirectory(prefix="uart-verifier-") as td:
-        temp = Path(td)
+        temp = pathlib.Path(td)
         (temp / "probe.cpp").write_text(HARNESS.replace("<CONTAINER_RTL>", CONTAINER_RTL), encoding="utf-8")
         files = " ".join(f"{CONTAINER_RTL}/{n}" for n in
                           ("wbuart.v", "rxuart.v", "txuart.v", "ufifo.v", "skidbuffer.v"))

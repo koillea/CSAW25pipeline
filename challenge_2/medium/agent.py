@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import pathlib
 import shutil
 import sys
 import time
@@ -12,12 +13,17 @@ from verifier import verify
 
 
 PROVIDER = "google"
-MAX_TRIES = 8
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RTL_DIR = os.path.join(PROJECT_ROOT, "work", "2025", "challenges", "challenge_2", "03_hard", "rtl")
-RTL_PATH = os.path.join(RTL_DIR, "wbuart.v")
-FINAL_PATH = os.path.join(RTL_DIR, "trojan_final.v")
-CLEAN_BACKUP_PATH = os.path.join(os.path.dirname(__file__), "clean_wbuart.v")
+MAX_TRIES = 6
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR
+while not (PROJECT_ROOT / "work").is_dir():
+    PARENT = PROJECT_ROOT.parent
+    if PARENT == PROJECT_ROOT:
+        raise RuntimeError("Could not find project root containing work/")
+    PROJECT_ROOT = PARENT
+RTL_DIR = PROJECT_ROOT / "work" / "2025" / "challenges" / "challenge_2" / "02_medium" / "rtl"
+RTL_PATH = RTL_DIR / "wbuart.v"
+FINAL_PATH = SCRIPT_DIR / "solution" / "trojan_final.v"
 
 
 def _fingerprint(candidate, result):
@@ -34,16 +40,6 @@ def _clean_candidate(candidate):
     return candidate + "\n"
 
 
-def _remove_duplicate_wbuart_sources():
-    for path in os.listdir(RTL_DIR):
-        if path == "wbuart.v" or not path.endswith(".v"):
-            continue
-        candidate_path = os.path.join(RTL_DIR, path)
-        with open(candidate_path, "r", encoding="utf-8", errors="ignore") as handle:
-            if "module wbuart" in handle.read():
-                os.remove(candidate_path)
-
-
 def main():
     clean_source = None
     previous_fingerprint = None
@@ -53,10 +49,6 @@ def main():
     try:
         with open(RTL_PATH, "r", encoding="utf-8") as handle:
             clean_source = handle.read()
-        _remove_duplicate_wbuart_sources()
-        if not os.path.exists(CLEAN_BACKUP_PATH):
-            with open(CLEAN_BACKUP_PATH, "w", encoding="utf-8") as handle:
-                handle.write(clean_source)
 
         for attempt in range(MAX_TRIES):
             print(f"Attempt {attempt}")
@@ -72,7 +64,6 @@ def main():
 
                 stage = "candidate write"
                 # The clean source remains in memory and is restored on abort.
-                _remove_duplicate_wbuart_sources()
                 with open(RTL_PATH, "w", encoding="utf-8") as handle:
                     handle.write(candidate)
 
@@ -89,6 +80,7 @@ def main():
 
                 if is_success(result):
                     stage = "final save"
+                    FINAL_PATH.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(RTL_PATH, FINAL_PATH)
                     print(f"SUCCESS on attempt {attempt}")
                     return 0
@@ -116,4 +108,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print(f"PROJECT_ROOT={PROJECT_ROOT}")
+    print(f"isdir(RTL_DIR)={RTL_DIR.is_dir()}")
     sys.exit(main())
