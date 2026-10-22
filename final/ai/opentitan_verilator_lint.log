@@ -1,0 +1,102 @@
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:const:0 selected lowrisc:prim_asap7:const:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:const_sec:0 selected lowrisc:prim_asap7:const_sec:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:flop_no_rst:0 selected lowrisc:prim_asap7:flop_no_rst:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:inv:0 selected lowrisc:prim_asap7:inv:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:xnor2:0 selected lowrisc:prim_asap7:xnor2:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:xor2:0 selected lowrisc:prim_asap7:xor2:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:and2:0 selected lowrisc:prim_generic:and2:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:buf:0 selected lowrisc:prim_generic:buf:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:flop:0 selected lowrisc:prim_generic:flop:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:clock_mux2:0 selected lowrisc:prim_xilinx:clock_mux2:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:clock_inv:0 selected lowrisc:prim_generic:clock_inv:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:pad_wrapper:0 selected lowrisc:prim_generic:pad_wrapper:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:flop_2sync:0 selected lowrisc:prim_generic:flop_2sync:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:flop_en:0 selected lowrisc:prim_generic:flop_en:0
+WARNING: Non-deterministic selection of virtual core lowrisc:prim:rst_sync:0 selected lowrisc:prim_generic:rst_sync:0
+WARNING: Non-deterministic selection of virtual core lowrisc:virtual_constants:top_racl_pkg:0 selected lowrisc:darjeeling_constants:top_racl_pkg:0.1
+INFO: Preparing lowrisc:ip:jtag_pkg:0.1
+INFO: Preparing lowrisc:lint:comportable:0.1
+INFO: Preparing lowrisc:tool:check_tool_requirements:0.1
+INFO: Preparing lowrisc:lint:common:0.1
+INFO: Preparing lowrisc:prim_asap7:const:0
+INFO: Preparing lowrisc:prim_asap7:const_sec:0
+INFO: Preparing lowrisc:prim_asap7:flop_no_rst:0
+INFO: Preparing lowrisc:prim_asap7:inv:0
+INFO: Preparing lowrisc:prim_asap7:xnor2:0
+INFO: Preparing lowrisc:prim_asap7:xor2:0
+INFO: Preparing lowrisc:prim:assert:0.1
+INFO: Preparing lowrisc:prim:cipher_pkg:0.1
+INFO: Preparing lowrisc:prim_generic:and2:0
+INFO: Preparing lowrisc:prim_generic:buf:0
+INFO: Preparing lowrisc:prim_generic:flop:0
+INFO: Preparing lowrisc:prim:pad_wrapper_pkg:0
+INFO: Preparing lowrisc:prim:secded:0.1
+INFO: Preparing lowrisc:prim:sha2_pkg:0
+INFO: Preparing lowrisc:prim_xilinx:clock_mux2:0
+INFO: Preparing lowrisc:prim:blanker:0
+INFO: Preparing lowrisc:prim:cdc_rand_delay:0
+INFO: Preparing lowrisc:prim:cipher:0
+INFO: Preparing lowrisc:prim:count:0
+INFO: Preparing lowrisc:prim_generic:clock_inv:0
+INFO: Preparing lowrisc:prim_generic:pad_wrapper:0
+INFO: Preparing lowrisc:prim:gf_mult:0
+INFO: Preparing lowrisc:prim:lfsr:0.1
+INFO: Preparing lowrisc:prim:mubi_pkg:0.1
+INFO: Preparing lowrisc:prim:sec_anchor:0.1
+INFO: Preparing lowrisc:prim:sha2:0
+INFO: Preparing lowrisc:prim:sparse_fsm:0
+INFO: Preparing lowrisc:prim:util:0.1
+INFO: Preparing lowrisc:darjeeling_constants:top_pkg:0
+INFO: Preparing lowrisc:ip:entropy_src_pkg:0.1
+INFO: Preparing lowrisc:ip:lc_ctrl_state_pkg:0.1
+INFO: Preparing lowrisc:prim_generic:flop_2sync:0
+INFO: Preparing lowrisc:prim_generic:flop_en:0
+INFO: Preparing lowrisc:prim:leading_one_ppc:0
+INFO: Preparing lowrisc:prim:mubi:0.1
+INFO: Preparing lowrisc:prim:onehot:0
+INFO: Preparing lowrisc:prim:onehot_check:0
+INFO: Preparing lowrisc:prim:trivium:0.1
+INFO: Preparing lowrisc:prim:arbiter:0
+INFO: Preparing lowrisc:prim:diff_decode:0
+INFO: Preparing lowrisc:prim:fifo:0
+INFO: Preparing lowrisc:prim_generic:rst_sync:0
+INFO: Preparing lowrisc:prim:reg_we_check:0
+INFO: Preparing lowrisc:prim:subreg:0
+INFO: Preparing lowrisc:tlul:headers:0.1
+INFO: Preparing lowrisc:darjeeling_constants:top_racl_pkg:0.1
+INFO: Preparing lowrisc:ip:lc_ctrl_pkg:0.1
+INFO: Preparing lowrisc:prim:esc:0
+INFO: Preparing lowrisc:tlul:trans_intg:0.1
+INFO: Preparing lowrisc:ip:csrng_pkg:0.1
+INFO: Preparing lowrisc:prim:alert:0
+INFO: Preparing lowrisc:prim:lc_sync:0.1
+INFO: Preparing lowrisc:tlul:common:0.1
+INFO: Preparing lowrisc:ip:edn_pkg:0.1
+INFO: Preparing lowrisc:prim:all:0.1
+INFO: Preparing lowrisc:tlul:adapter_host:0.1
+INFO: Preparing lowrisc:tlul:adapter_reg:0.1
+INFO: Preparing lowrisc:tlul:adapter_sram:0.1
+INFO: Preparing lowrisc:tlul:lc_gate:0.1
+INFO: Preparing lowrisc:tlul:request_loopback:0.1
+INFO: Preparing lowrisc:tlul:socket_1n:0.1
+INFO: Preparing lowrisc:tlul:socket_m1:0.1
+INFO: Preparing lowrisc:tlul:sram2tlul:0.1
+INFO: Preparing lowrisc:ip:keymgr_dpe_pkg:0.1
+INFO: Preparing lowrisc:tlul:adapter_racl:0.1
+INFO: Preparing lowrisc:tlul:adapter_reg_racl:0.1
+INFO: Preparing pulp-platform:riscv-dbg:0.1:0
+INFO: Preparing lowrisc:tlul:adapter_dmi:0.1
+INFO: Preparing lowrisc:tlul:adapter_sram_racl:0.1
+INFO: Preparing lowrisc:tlul:jtag_dtm:0.1
+INFO: Preparing lowrisc:ip:tlul:0.1
+INFO: Preparing lowrisc:ip:aes:1.0
+INFO: Setting up project
+WARNING: This backend is deprecated and will eventually be removed. Please migrate to the flow API instead.  See https://edalize.readthedocs.io/en/latest/ref/migrations.html#migrating-from-the-tool-api-to-the-flow-api for more details.
+INFO: Running pre_build script check_tool_requirements_verilator
+INFO: Tool python present: Sufficiently recent version (found 3.14.2; needed 3.10)
+INFO: Tool edalize present: Sufficiently recent version (found 0.6.8; needed 0.2.0)
+INFO: Tool verilator present: Sufficiently recent version (found 5.053; needed 5.048)
+INFO: Building simulation model
+INFO: Running
+Entering directory '/Users/koillea/Documents/Codex/2026-10-11/c/ot/build/lowrisc_ip_aes_1.0/lint-verilator'
+Leaving directory '/Users/koillea/Documents/Codex/2026-10-11/c/ot/build/lowrisc_ip_aes_1.0/lint-verilator'
