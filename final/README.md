@@ -30,3 +30,28 @@ valid SystemVerilog, correctly typed, and integrates into the real root-of-trust
 **Level 2 - functional simulation (TODO).** Drive an encryption over TL-UL (with EDN
 entropy + lifecycle tie-offs), send the magic plaintext, and show `data_out` returns the
 key instead of the ciphertext. Requires a TL-UL/EDN testbench - the remaining step.
+
+## Verification status - UPDATE: Level 2 DONE
+
+**Level 2 - functional simulation (DONE).** The Trojan is proven functionally in the full
+OpenTitan `aes` block under Verilator (unmasked config: `SecMasking=0`,
+`SecSkipPRNGReseeding=1`, `AESGCMEnable=0`). A TileLink-UL testbench (`tb/tb_aes_trojan.sv`,
+using OpenTitan's own `tlul_adapter_host` as bus master) loads a known key, runs a normal
+encryption, then sends the magic plaintext:
+
+```
+KEY       = 00112233 44556677 8899aabb ccddeeff
+NORMAL CT = 257724bf 5f1b91d6 fec648da ec0415ba   (correct ciphertext, != key)
+MAGIC OUT = 00112233 44556677 8899aabb ccddeeff   (== key -> LEAK)
+RESULT: TROJAN_LEAK_CONFIRMED
+RESULT: NORMAL_OK (trojan dormant on normal input)
+```
+
+Normal AES still encrypts correctly (Trojan dormant); the magic plaintext `A5A5..A5` makes
+`DATA_OUT` return the loaded key. Evidence: `ai/opentitan_functional_sim.log`. Implementation
+note: the Trojan taps `key_init_q` (the core's registered key) because OpenTitan's
+`key_share` SW registers read back zero, so a naive `reg2hw` tap leaks nothing - found via
+in-sim hierarchical probing.
+
+Status: final challenge COMPLETE - design + Level-1 integration/lint + Level-2 functional
+leak, all in OpenTitan's own fusesoc/Verilator toolchain.
